@@ -4,7 +4,7 @@
 ####################################################################
 
 terraform {
-  required_version = "~> v1.16.0"
+  required_version = "~> v1.17.0"
 
   required_providers {
     aap = {

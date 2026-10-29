@@ -2,6 +2,10 @@
 
 This repository contains a demo that uses Terraform actions to run Red Hat Ansible Automation Platform (AAP) jobs from HCP Terraform or Terraform Enterprise. Terraform provisions RHEL web servers on AWS and registers them in an AAP inventory. AAP configures each server when Terraform creates it, updates the website when its content changes, and decommissions each server before Terraform destroys it.
 
+> [!WARNING]
+> **Demo only. Do not use this repository in production.**
+> The configurations simplify security to keep the demo short: open security group rules, no TLS verification for AAP, and static AWS credentials. For the full list, refer to [Demo simplifications](#demo-simplifications).
+
 ## How the demo works
 
 Terraform actions run an operation outside of the normal resource lifecycle. An `action_trigger` block in a resource's `lifecycle` block invokes an action when a lifecycle event occurs. This demo uses the `aap_job_launch` action from the [`ansible/aap` provider](https://registry.terraform.io/providers/ansible/aap/latest) to launch AAP job templates.
@@ -32,7 +36,7 @@ The repository contains two Terraform configurations. Deploy them in the followi
 
 You need the following accounts and tools:
 
-- An HCP Terraform organization or a Terraform Enterprise instance. The `02-web-servers` workspace requires Terraform v1.16 or later.
+- An HCP Terraform organization or a Terraform Enterprise instance. The `02-web-servers` workspace requires Terraform v1.17.x.
 - A Red Hat Ansible Automation Platform instance that the HCP Terraform or Terraform Enterprise workers can reach over HTTPS.
 - An AWS account with permissions to create VPC and EC2 resources.
 - A GitHub account to fork this repository.
@@ -42,23 +46,37 @@ You need the following accounts and tools:
 
 Create the following objects in the `Default` organization. To use a different organization, update the `organization_name` and `name` arguments in `02-web-servers/aap.tf` and `02-web-servers/actions.tf`.
 
-1. Create a project that points to your fork of this repository. Enable **Update Revision on Launch** so that each job uses the latest commit.
-1. Create a machine credential with the username `ec2-user` and the private key of your SSH key pair.
-1. Create the following job templates. For each template, select the project and the machine credential, and enable **Prompt on launch** for the **Inventory** and **Limit** fields.
+1. Create the credentials:
 
-   | Job template name | Playbook |
-   | --- | --- |
-   | `tfc_httpd-config` | `02-web-servers/playbooks/httpd-config.yml` |
-   | `tfc_update` | `02-web-servers/playbooks/update.yml` |
-   | `tfc_destroy` | `02-web-servers/playbooks/destroy.yml` |
+   | Suggested name | Type | Contents | Purpose |
+   | --- | --- | --- | --- |
+   | `tfc_demo_ssh` | Machine | Username `ec2-user` and the private key of your SSH key pair. | SSH connection from AAP to the web servers. |
+   | `tfc_demo_github` | Source Control | GitHub username and personal access token, or an SSH key. | AAP access to your fork. Optional if the fork is public. |
 
-1. Create a user for Terraform. The user needs permission to create inventories in the organization and to execute the three job templates.
+1. Create a project that points to your fork:
+   - **Source control type**: `Git`.
+   - **Source control URL**: the URL of your fork.
+   - **Source control branch**: `main`.
+   - **Source control credential**: `tfc_demo_github`, if you created it.
+   - Enable **Update Revision on Launch** so that each job uses the latest commit, including the current content of `website/`.
 
-Terraform creates the `hcp-terraform-actions-aap` inventory and its `web_servers` group. You do not need to create them.
+1. Create the three job templates. For each template, select the project and the `tfc_demo_ssh` credential, and enable **Prompt on launch** for the **Inventory** and **Limit** fields. Terraform passes the inventory and, for creation and decommission, the target host.
+
+   | Job template name | Playbook | Launched by |
+   | --- | --- | --- |
+   | `tfc_httpd-config` | `02-web-servers/playbooks/httpd-config.yml` | `aap_job_launch.create` |
+   | `tfc_update` | `02-web-servers/playbooks/update.yml` | `aap_job_launch.update` |
+   | `tfc_destroy` | `02-web-servers/playbooks/destroy.yml` | `aap_job_launch.destroy` |
+
+   The names must match the names in `02-web-servers/actions.tf` exactly.
+
+1. Create a user for Terraform. The user needs permission to create inventories in the organization and to execute the three job templates. Set its credentials in the `aap_username` and `aap_password` variables of the `aap-creds` variable set.
+
+Terraform creates the `hcp-terraform-actions-aap` inventory and its `web_servers` group. Do not create them.
 
 ## Configure HCP Terraform or Terraform Enterprise
 
-Create two variable sets and two workspaces in your organization.
+Create two variable sets, a project, and two workspaces in your organization.
 
 ### Create the variable sets
 
@@ -77,10 +95,15 @@ Create a variable set named `aap-creds` with the following Terraform variables:
 | `aap_username` | The username of the AAP user for Terraform | Terraform variable | No |
 | `aap_password` | The password of the AAP user for Terraform | Terraform variable | Yes |
 
+### Create the project
+
+In **Projects**, create a project named `HCP Terraform Actions AAP`. Create both workspaces in this project.
+
 ### Create the network workspace
 
-1. Create a workspace named `hcp-terraform-actions-aap-network` with a version control workflow that uses your fork.
+1. In the `HCP Terraform Actions AAP` project, create a workspace named `01-aws-network` with a version control workflow that uses your fork.
 1. In **Advanced options**, set **Terraform Working Directory** to `01-aws-network`.
+1. Under **VCS Triggers**, select **Only trigger runs when files in specified paths change**, select **Pattern-based triggers**, and add the `/01-aws-network/**/*` pattern.
 1. Apply the `aws-creds` variable set to the workspace.
 1. Add the following Terraform variables:
 
@@ -89,13 +112,14 @@ Create a variable set named `aap-creds` with the following Terraform variables:
    | `tag` | `demo-aap` | Prefix for the AWS resource names. |
    | `region` | `us-east-1` | AWS region for all resources. |
 
-1. In **Settings** > **General**, under **Remote state sharing**, share the state with the `hcp-terraform-actions-aap-web-servers` workspace.
+1. In **Settings** > **General**, under **Remote state sharing**, share the state with the `02-web-servers` workspace.
 
 ### Create the web servers workspace
 
-1. Create a workspace named `hcp-terraform-actions-aap-web-servers` with a version control workflow that uses your fork.
+1. In the `HCP Terraform Actions AAP` project, create a workspace named `02-web-servers` with a version control workflow that uses your fork.
 1. In **Advanced options**, set **Terraform Working Directory** to `02-web-servers`.
-1. In **Settings** > **General**, set the Terraform version to 1.16 or later.
+1. Under **VCS Triggers**, select **Only trigger runs when files in specified paths change**, select **Pattern-based triggers**, and add the `/02-web-servers/**/*` pattern. The pattern includes the `website/` and `playbooks/` directories, so a change to the website starts a run.
+1. In **Settings** > **General**, set the Terraform version to 1.17.x.
 1. Apply the `aws-creds` and `aap-creds` variable sets to the workspace.
 1. Add the following Terraform variables:
 
@@ -106,16 +130,16 @@ Create a variable set named `aap-creds` with the following Terraform variables:
    | `pub_ssh_key` | Yes | `ssh-ed25519 AAAA...` | Public key of your SSH key pair. |
    | `tfc_org` | Yes | `my-org` | Organization that contains the network workspace. |
    | `tfe_hostname` | No | `app.terraform.io` | Hostname of HCP Terraform or of your Terraform Enterprise instance. |
-   | `network_workspace` | No | `hcp-terraform-actions-aap-network` | Name of the network workspace. |
+   | `network_workspace` | No | `01-aws-network` | Name of the network workspace. The default value matches the workspace name from the previous section. |
    | `num_web_servers` | No | `2` | Number of web servers. The minimum is `1`. |
    | `rhel_major_version` | No | `10` | RHEL major version of the Amazon Machine Image (AMI). |
 
-1. Optional: In **Settings** > **Run Triggers**, add `hcp-terraform-actions-aap-network` as a source workspace. A successful apply in the network workspace then starts a plan in this workspace.
+1. Optional: In **Settings** > **Run Triggers**, add `01-aws-network` as a source workspace. A successful apply in the network workspace then starts a plan in this workspace.
 
 ## Deploy the demo
 
-1. Start a run in the `hcp-terraform-actions-aap-network` workspace and apply the plan.
-1. Start a run in the `hcp-terraform-actions-aap-web-servers` workspace and apply the plan. Terraform creates the instances and the AAP hosts, then runs one `tfc_httpd-config` job for each host.
+1. Start a run in the `01-aws-network` workspace and apply the plan.
+1. Start a run in the `02-web-servers` workspace and apply the plan. Terraform creates the instances and the AAP hosts, then runs one `tfc_httpd-config` job for each host.
 1. Open one of the URLs from the `ec2_all_addr_aap_http` output. The page shows the website and the operating system version of the server.
 
 The first apply can report a `Warning: Error making request` from the `health_check_http_AAP_8080` check. Terraform can run the check before AAP finishes the configuration of port `8080`. After the configuration job completes, the next health assessment reports a healthy status.
@@ -154,10 +178,10 @@ This demo uses the following simplifications. Do not use them in production.
 
 Destroy the workspaces in the following order:
 
-1. `hcp-terraform-actions-aap-web-servers`. Terraform runs the `tfc_destroy` job on each host, then removes the hosts, the inventory, and the instances.
-1. `hcp-terraform-actions-aap-network`.
+1. `02-web-servers`. Terraform runs the `tfc_destroy` job on each host, then removes the hosts, the inventory, and the instances.
+1. `01-aws-network`.
 
-You can then delete the workspaces, the variable sets, and the AAP project, credential, job templates, and user.
+You can then delete the workspaces, the `HCP Terraform Actions AAP` project, the variable sets, and the AAP project, credential, job templates, and user.
 
 ## Next steps
 
