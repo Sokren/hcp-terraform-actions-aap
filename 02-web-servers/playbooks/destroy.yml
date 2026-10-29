@@ -1,0 +1,44 @@
+---
+# Lancé par Terraform (before_destroy) juste avant le retrait de l'hôte.
+# Run by Terraform (before_destroy) right before the host is removed.
+- name: Gracefully decommission web server
+  hosts: all
+  become: yes
+  gather_facts: no
+
+  pre_tasks:
+    - name: Wait for system to become reachable
+      wait_for_connection:
+        timeout: 60
+
+  tasks:
+    - name: Collect service facts
+      ansible.builtin.service_facts:
+
+    - name: Count requests served by this server
+      ansible.builtin.shell: wc -l < /var/log/httpd/access_log
+      register: served_requests
+      changed_when: false
+      failed_when: false
+
+    - name: Stop and disable httpd
+      ansible.builtin.service:
+        name: httpd
+        state: stopped
+        enabled: no
+      when: "'httpd.service' in ansible_facts.services"
+
+    - name: Remove website content and vhost
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/www/html/
+        - /etc/httpd/conf.d/000-default.conf
+
+    - name: Decommission summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} decommissioned:
+          httpd stopped, website removed,
+          {{ served_requests.stdout | default('0', true) }} requests served.

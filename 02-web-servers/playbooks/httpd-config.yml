@@ -1,0 +1,99 @@
+---
+- name: Change httpd listening port to 8080 and deploy new website version (RHEL 10)
+  hosts: all
+  become: yes
+  gather_facts: no
+
+  pre_tasks:
+    - name: Wait for system to become reachable
+      wait_for_connection:
+        delay: 10
+        timeout: 120
+
+    - name: Wait for cloud-init to complete
+      command: cloud-init status --wait
+      changed_when: false
+      become: yes
+      ignore_errors: yes
+
+    - name: Gather facts after waiting
+      setup:
+
+  tasks:
+    - name: Ensure httpd is installed
+      dnf:
+        name: httpd
+        state: present
+
+#    - name: Allow Apache (httpd) to listen on TCP port 8080 in SELinux
+#      community.general.seport:
+#        ports: 8080
+#        proto: tcp
+#        setype: http_port_t
+#        state: present
+
+    - name: Update Listen port from 80 to 8080 in main httpd.conf
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen\s+80'
+        line: 'Listen 8080'
+        state: present
+        backrefs: no
+      notify: Restart httpd
+
+    - name: Create/Update default vhost to use port 8080
+      copy:
+        dest: /etc/httpd/conf.d/000-default.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          <VirtualHost *:8080>
+              DocumentRoot "/var/www/html"
+              <Directory "/var/www/html">
+                  AllowOverride All
+                  Require all granted
+              </Directory>
+
+              ErrorLog  "/var/log/httpd/error_log"
+              CustomLog "/var/log/httpd/access_log" combined
+          </VirtualHost>
+      notify: Restart httpd
+
+    - name: Ensure /var/www/html exists
+      file:
+        path: /var/www/html
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+
+    # Même source que update.yml et que le hash Terraform (website/ local au projet)
+    # Same source as update.yml and the Terraform hash (project-local website/)
+    - name: Deploy website version
+      copy:
+        src: "{{ playbook_dir }}/../website/"
+        dest: "/var/www/html"
+        owner: apache
+        group: apache
+        mode: '0755'
+      notify: Restart httpd
+
+    - name: Inject OS version into the website
+      ansible.builtin.replace:
+        path: /var/www/html/index.html
+        regexp: '__OS_VERSION__'
+        replace: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+      notify: Restart httpd
+
+    - name: Enable and start httpd (ensure it's running)
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Restart httpd
+      service:
+        name: httpd
+        state: restarted
