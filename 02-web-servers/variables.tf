@@ -51,7 +51,7 @@ variable "tfe_hostname" {
 # Workspace qui déploie 01-aws-network / Workspace that deploys 01-aws-network
 variable "network_workspace" {
   type    = string
-  default = "hcp-terraform-actions-aap-network"
+  default = "01-aws-network"
 }
 
 variable "region" {
