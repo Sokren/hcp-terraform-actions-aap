@@ -44,10 +44,10 @@ Les ressources portent le tag `Name` au format `<tag>-<random_pet>`. Les subnets
 1. Dans **Projects**, créez un projet nommé `HCP Terraform Actions AAP`, s'il n'existe pas encore.
 1. Dans ce projet, créez un workspace nommé `01-aws-network` avec un workflow VCS qui utilise votre fork du dépôt.
 1. Dans **Advanced options**, définissez **Terraform Working Directory** sur `01-aws-network`.
-1. Sous **VCS Triggers**, sélectionnez **Only trigger runs when files in specified paths change**, puis **Pattern-based triggers**, et ajoutez le pattern `/01-aws-network/**/*`.
+1. Sous **VCS Triggers**, sélectionnez **Only trigger runs when files in specified paths change**, puis **Pattern-based triggers**, et ajoutez le pattern `/01-aws-network/*.tf`.
 1. Appliquez le variable set qui contient les identifiants AWS, par exemple `aws-creds`.
 1. Ajoutez les variables Terraform `tag` et `region`.
-1. Dans **Settings** > **General**, sous **Remote state sharing**, partagez le state avec le workspace `02-web-servers`.
+1. Dans **Settings** > **General**, sous **Remote state sharing**, sélectionnez **Share with all workspaces in this project**. Le workspace `02-web-servers` n'existe pas encore : cette option lui donne accès au state dès sa création dans le projet `HCP Terraform Actions AAP`.
 1. Lancez un run et appliquez le plan.
 
 La variable `network_workspace` du workspace `02-web-servers` vaut `01-aws-network` par défaut, soit le nom de ce workspace. Si vous utilisez un autre nom, modifiez cette variable.
@@ -100,10 +100,10 @@ The resources have a `Name` tag in the `<tag>-<random_pet>` format. Subnets and 
 1. In **Projects**, create a project named `HCP Terraform Actions AAP`, if it does not exist yet.
 1. In this project, create a workspace named `01-aws-network` with a version control workflow that uses your fork of the repository.
 1. In **Advanced options**, set **Terraform Working Directory** to `01-aws-network`.
-1. Under **VCS Triggers**, select **Only trigger runs when files in specified paths change**, select **Pattern-based triggers**, and add the `/01-aws-network/**/*` pattern.
+1. Under **VCS Triggers**, select **Only trigger runs when files in specified paths change**, select **Pattern-based triggers**, and add the `/01-aws-network/*.tf` pattern.
 1. Apply the variable set that contains your AWS credentials, for example `aws-creds`.
 1. Add the `tag` and `region` Terraform variables.
-1. In **Settings** > **General**, under **Remote state sharing**, share the state with the `02-web-servers` workspace.
+1. In **Settings** > **General**, under **Remote state sharing**, select **Share with all workspaces in this project**. The `02-web-servers` workspace does not exist yet, so this option lets it read the state as soon as you create it in the `HCP Terraform Actions AAP` project.
 1. Start a run and apply the plan.
 
 The `network_workspace` variable of the `02-web-servers` workspace defaults to `01-aws-network`, the name of this workspace. If you use another name, change this variable.

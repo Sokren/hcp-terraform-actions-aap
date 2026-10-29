@@ -107,7 +107,7 @@ In **Projects**, create a project named `HCP Terraform Actions AAP`. Create both
 
 1. In the `HCP Terraform Actions AAP` project, create a workspace named `01-aws-network` with a version control workflow that uses your fork.
 1. In **Advanced options**, set **Terraform Working Directory** to `01-aws-network`.
-1. Under **VCS Triggers**, select **Only trigger runs when files in specified paths change**, select **Pattern-based triggers**, and add the `/01-aws-network/**/*` pattern.
+1. Under **VCS Triggers**, select **Only trigger runs when files in specified paths change**, select **Pattern-based triggers**, and add the `/01-aws-network/*.tf` pattern.
 1. Apply the `aws-creds` variable set to the workspace.
 1. Add the following Terraform variables:
 
@@ -116,7 +116,7 @@ In **Projects**, create a project named `HCP Terraform Actions AAP`. Create both
    | `tag` | `demo-aap` | Prefix for the AWS resource names. |
    | `region` | `us-east-1` | AWS region for all resources. |
 
-1. In **Settings** > **General**, under **Remote state sharing**, share the state with the `02-web-servers` workspace.
+1. In **Settings** > **General**, under **Remote state sharing**, select **Share with all workspaces in this project**. The `02-web-servers` workspace does not exist yet, so this option lets it read the state as soon as you create it in the `HCP Terraform Actions AAP` project.
 
 ### Create the web servers workspace
 
