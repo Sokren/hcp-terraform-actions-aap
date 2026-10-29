@@ -60,7 +60,11 @@ Create the following objects in the `Default` organization. To use a different o
    - **Source control credential**: `tfc_demo_github`, if you created it.
    - Enable **Update Revision on Launch** so that each job uses the latest commit, including the current content of `website/`.
 
-1. Create the three job templates. For each template, select the project and the `tfc_demo_ssh` credential, and enable **Prompt on launch** for the **Inventory** and **Limit** fields. Terraform passes the inventory and, for creation and decommission, the target host.
+1. Create the three job templates in the following table. Apply the following settings to each template:
+   - **Project**: the project from the previous step.
+   - **Credentials**: `tfc_demo_ssh`.
+   - **Inventory** and **Limit**: enable **Prompt on launch**. Terraform passes the inventory and, for creation and decommission, the target host.
+   - **Options** > **Concurrent jobs**: enable it so that jobs run in parallel. Terraform launches one `tfc_httpd-config` or `tfc_destroy` job per host at the same time. Without this option, AAP queues the jobs and runs them one after the other.
 
    | Job template name | Playbook | Launched by |
    | --- | --- | --- |

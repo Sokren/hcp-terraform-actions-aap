@@ -77,7 +77,11 @@ Créez les objets suivants dans l'organisation `Default`. Pour utiliser une autr
    - **Source control credential** : `tfc_demo_github`, si vous l'avez créé.
    - Activez **Update Revision on Launch** pour que chaque job utilise le dernier commit, notamment le contenu à jour de `website/`.
 
-1. Créez les trois job templates. Pour chacun, sélectionnez le projet et le credential `tfc_demo_ssh`, et activez **Prompt on launch** pour les champs **Inventory** et **Limit**. Terraform transmet l'inventaire et, pour la création et la destruction, l'hôte ciblé.
+1. Créez les trois job templates du tableau suivant. Appliquez les réglages suivants à chaque modèle :
+   - **Project** : le projet de l'étape précédente.
+   - **Credentials** : `tfc_demo_ssh`.
+   - **Inventory** et **Limit** : activez **Prompt on launch**. Terraform transmet l'inventaire et, pour la création et la destruction, l'hôte ciblé.
+   - **Options** > **Concurrent jobs** : activez cette option pour que les jobs s'exécutent en parallèle. Terraform lance en même temps un job `tfc_httpd-config` ou `tfc_destroy` par hôte. Sans cette option, AAP met les jobs en file d'attente et les exécute l'un après l'autre.
 
    | Nom du job template | Playbook | Lancé par |
    | --- | --- | --- |
@@ -211,7 +215,11 @@ Create the following objects in the `Default` organization. To use a different o
    - **Source control credential**: `tfc_demo_github`, if you created it.
    - Enable **Update Revision on Launch** so that each job uses the latest commit, including the current content of `website/`.
 
-1. Create the three job templates. For each template, select the project and the `tfc_demo_ssh` credential, and enable **Prompt on launch** for the **Inventory** and **Limit** fields. Terraform passes the inventory and, for creation and decommission, the target host.
+1. Create the three job templates in the following table. Apply the following settings to each template:
+   - **Project**: the project from the previous step.
+   - **Credentials**: `tfc_demo_ssh`.
+   - **Inventory** and **Limit**: enable **Prompt on launch**. Terraform passes the inventory and, for creation and decommission, the target host.
+   - **Options** > **Concurrent jobs**: enable it so that jobs run in parallel. Terraform launches one `tfc_httpd-config` or `tfc_destroy` job per host at the same time. Without this option, AAP queues the jobs and runs them one after the other.
 
    | Job template name | Playbook | Launched by |
    | --- | --- | --- |
